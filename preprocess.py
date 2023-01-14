@@ -6,7 +6,8 @@ from scipy.stats import spearmanr
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-from scipy.fftpack import fft,ifft
+from scipy.fftpack import fft, ifft
+
 
 # normalize
 def norm(arr):
@@ -15,10 +16,12 @@ def norm(arr):
     r = ax - m
     return (arr - m) / r
 
+
 # read_folder
 def distance(a, b):
     dist = [(a[i] - b[i]) ** 2 for i in range(len(a))]
     return sum(dist) ** 0.5
+
 
 def angle(s1, a, s2):
     va = s1 - a
@@ -28,6 +31,7 @@ def angle(s1, a, s2):
     cos_theta = ab / abl
     theta = (np.arccos(cos_theta) / np.pi) * 180
     return theta
+
 
 def pca(X, k):  # k is the components you want
     # mean of each feature
@@ -48,6 +52,7 @@ def pca(X, k):  # k is the components you want
     data = np.dot(norm_X, np.transpose(feature))
     return data
 
+
 def dist_hm(arr):
     matrix = []
     for i in arr:
@@ -56,6 +61,7 @@ def dist_hm(arr):
             line.append(distance(i, j))
         matrix.append(line)
     return matrix
+
 
 def get_angle(arr):
     ang = []
@@ -66,36 +72,51 @@ def get_angle(arr):
         ang.append(angle(a, b, c))
     return ang
 
+
 def rm_zero(x, y):
     dt = list(zip(x, y))
     dt = [n for n in dt if n[1] != 0]
     x, y = zip(*dt)
     return np.asarray(x), np.asarray(y)
 
+
 def de_trend(mat):
     def fun(x, a, b, c):
         return c * np.exp(-a * x) + b
+
     time_series = np.linspace(0, mat.shape[1] - 1, num=mat.shape[1])
     new = []
     for data in mat:
         # remove zero point
         x, y = rm_zero(list(time_series), list(data))
-        f, err = curve_fit(fun, x, y, p0=[0.003, 0.5, 0.5],maxfev=5000)
+        f, err = curve_fit(fun, x, y, p0=[0.003, 0.5, 0.5], maxfev=5000)
         print(f)
         curve = fun(time_series, f[0], f[1], f[2])
         new.append(curve)
     new = np.asarray(new)
     mat = mat / new
-    return mat,new
+    return mat, new
+
 
 def cor(mat):
     score = []
-    for i in mat:
-        for j in mat:
-            s = spearmanr(i, j)[0]
-            if s <= 0.9995:
+    pos = []
+    neg = []
+    null = []
+    name = list(mat.columns)
+    for i in name:
+        for j in name:
+            if i != j:
+                s = spearmanr(mat[i],mat[j])[0]
                 score.append(s)
-    return score
+                if s < -0.4:
+                    neg.append((i,j))
+                elif s > 0.4:
+                    pos.append((i,j))
+                else:
+                    null.append((i,j))
+    return score,pos,neg,null
+
 
 def de_noise(mat):
     mat = mat
@@ -105,26 +126,28 @@ def de_noise(mat):
         new.append(np.convolve(i, a, mode='valid'))
     return np.asarray(new)
 
-def elect(mat,n):  # mat = norm(time x neuron)
-    line = pd.DataFrame(np.std(mat,axis=1),columns=['std'])
-    mat = pd.DataFrame(mat)
-    mat = pd.concat([mat,line],axis=1)
-    mat.sort_values(by='std',ascending=False)
-    mat = mat.drop(['std'],axis=1)
-    return mat[:n].values
+
+def elect(df, n):  # mat = norm(time x neuron)
+    ind = list(df.var().sort_values()[-n:].index)
+    mat = pd.DataFrame()
+    for i in ind:
+        mat = pd.concat([mat,df[i]],axis=1)
+    return mat
+
 
 def draw():
-    ax1 = plt.subplot(5,1,1)
+    ax1 = plt.subplot(5, 1, 1)
     plt.plot(fret_hm[0].T)
-    ax2 = plt.subplot(5,1,2)
+    ax2 = plt.subplot(5, 1, 2)
     plt.plot(fret_hm_dn[0].T)
-    ax3 = plt.subplot(5,1,3)
+    ax3 = plt.subplot(5, 1, 3)
     plt.plot(curve[0].T)
-    ax3 = plt.subplot(5,1,4)
+    ax3 = plt.subplot(5, 1, 4)
     plt.plot(fret_hm_dt[0].T)
-    ax4 = plt.subplot(5,1,5)
+    ax4 = plt.subplot(5, 1, 5)
     plt.plot(fret_hm_nm[0])
     plt.show()
+
 
 def draw_pca(pca_d):
     dt = pca_d.T
@@ -132,8 +155,9 @@ def draw_pca(pca_d):
     y = dt[1]
     z = dt[2]
     plt.axes(projection='3d')
-    plt.plot(x,y,z)
+    plt.plot(x, y, z)
     plt.show()
+
 
 def fft_filter(mat):
     new = []
@@ -148,6 +172,7 @@ def fft_filter(mat):
         new.append(ifft(line))
     return np.asarray(new)
 
+
 def fft_filter(mat):
     new = []
     for i in mat:
@@ -159,15 +184,16 @@ def fft_filter(mat):
             else:
                 line.append(0)
         line = ifft(line)
-        line = line[50:len(line)-50]
-        line = line[:int(len(line)/2)]
+        line = line[50:len(line) - 50]
+        line = line[:int(len(line) / 2)]
         new.append(line)
     return abs(np.asarray(new))
 
+
 if __name__ == "__main__":
     # working commands
-    ch1_p = r"C:\Users\YOUNG\Downloads\230102-W1-ch1.csv"
-    ch2_p = r"C:\Users\YOUNG\Downloads\230102-W1-ch2.csv"
+    ch1_p = r"ch1.csv"
+    ch2_p = r"ch2.csv"
     ch1 = pd.read_csv(ch1_p, index_col=0)
     ch2 = pd.read_csv(ch2_p, index_col=0)
     name = ch1.columns
@@ -180,29 +206,29 @@ if __name__ == "__main__":
     fret_hm = ch2_d / ch1_d
     fret_hm = fret_hm.T
     fret_hm_dn = de_noise(fret_hm)
-    fret_hm_dt,curve = de_trend(fret_hm_dn)
+    fret_hm_dt, curve = de_trend(fret_hm_dn)
     fret_hm_nm = norm(fret_hm_dt.T)
     fret = pd.DataFrame(fret_hm_nm, columns=name)
-    ele = elect(fret_hm_nm.T,40) # choose first n neurons according to std
-    dst = dist_hm(ele.T)
-    pca_d = pca(ele.T,3)
+
+    ele = elect(fret, 40)  # choose first n neurons according to std
+    dst = dist_hm(ele.values)
+    pca_d = pca(ele.values, 3)
     ang = get_angle(pca_d)
-    co = cor(fret_hm_nm.T)
+    co,pos,neg,null = cor(fret)
 
     # 4 line charts
     draw()
     # first heatmap
     a = sns.clustermap(fret.T, col_cluster=False, cmap='jet')
     # trend heatmap
-    b = sns.clustermap(curve,col_cluster=False,cmap='jet')
+    b = sns.clustermap(curve, col_cluster=False, cmap='jet')
     # cldt = a.data2d # cluster heatmap
     # distance map
     plt.imshow(dst, cmap='jet', aspect='auto')
     plt.colorbar()
-    #pca 3d plot
+    # pca 3d plot
     draw_pca(pca_d)
-    #pca angle plot
+    # pca angle plot
     sns.histplot(ang)
-    #spearman plot neuron correlation pairs
+    # spearman plot neuron correlation pairs
     sns.histplot(co)
-
