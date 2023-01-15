@@ -214,7 +214,7 @@ if __name__ == "__main__":
     dst = dist_hm(ele.values)
     pca_d = pca(ele.values, 3)
     ang = get_angle(pca_d)
-    co,pos,neg,null = cor(fret)
+    co,pos,neg,null = cor(ele)
 
     # 4 line charts
     draw()
