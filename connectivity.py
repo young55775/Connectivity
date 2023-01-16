@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 # make a connectome network with annotate file and connectomic dataset
 # digraph with weight
-a = pd.read_csv('connectomic.csv')
+a = pd.read_csv('connectome_all.csv')
 adj = a.values
 lst = []
 connect = []
@@ -21,7 +21,7 @@ for i in adj:
             lst.append([i[1], i[0], 1 / i[3]])
             lst.append([i[0], i[1], 1 / i[3]])
 
-lst = [n for n in lst if n[0] in name or n[1] in name]
+
 
 def construct(lst):
     G = nx.DiGraph()
@@ -29,19 +29,23 @@ def construct(lst):
         G.add_edge(i[0],i[1],weight=i[2])
     return G
 
-nx.draw_networkx(G,with_labels=False,node_size=20)
-plt.show(block=True)
+
 
 #calculate distance
-pos = [n for n in pos if n[0] in a['Neuron 1'].to_list() and n[1] in a['Neuron 1'].to_list()]
-neg = [n for n in neg if n[0] in a['Neuron 1'].to_list() and n[1] in a['Neuron 1'].to_list()]
+
 
 #draw positive/negative network
-def pro_lst(lst,ref,ran):
+def pro_lst(lst,ref,g,remove=[]):
     p = list(zip(*lst))
     p = list(p[1]) + list(p[0])
     p = list(set(p))
     res = []
+    ran = []
+    lst = [n for n in lst if n[0] in g.nodes() and n[1] in g.nodes()]
+    for i in lst:
+        ran += nx.shortest_paths.shortest_path(g,i[0],i[1])
+    ran = list(set(ran))
+    ran = [n for n in ran if n not in remove]
     for j in ref:
         if j[0] in p or j[1] in p:
             if j[0] in ran and j[1] in ran:
@@ -50,14 +54,23 @@ def pro_lst(lst,ref,ran):
 
 def calculate_path(g,lst):
     p = []
+    lst = [n for n in lst if n[0] in g.nodes() and n[1] in g.nodes()]
     for i in lst:
-        p.append(nx.shortest_paths.shortest_path_length(g,i[0],i[1]))
+        try:
+            p.append(nx.shortest_paths.shortest_path_length(g,i[0],i[1]))
+        except:
+            print()
     return p
 
-
-# lstp = pro_lst(pos,lst,name)
+# lst = [n for n in lst if n[0] in name or n[1] in name]
+# pos = [n for n in pos if n[0] in a['Neuron 1'].to_list() and n[1] in a['Neuron 1'].to_list()]
+# neg = [n for n in neg if n[0] in a['Neuron 1'].to_list() and n[1] in a['Neuron 1'].to_list()]
+G=construct(lst)
+nx.draw_networkx(G,with_labels=False,node_size=20,width=0.5)
+plt.show(block=True)
+# lstp = pro_lst(pos,lst,G)
 # gp = construct(lstp)
-# lstn = pro_lst(neg,lst,name)
+# lstn = pro_lst(neg,lst,G)
 # gn = construct(lstn)
 # nx.draw_networkx(gp,with_labels=False,node_size=20,edge_color='coral',label='positive')
 # nx.draw_networkx(gn,with_labels=False,node_size=20,edge_color='deepskyblue',label='negative')

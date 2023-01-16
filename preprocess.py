@@ -98,7 +98,7 @@ def de_trend(mat):
     return mat, new
 
 
-def cor(mat):
+def cor(mat,n):
     score = []
     pos = []
     neg = []
@@ -109,9 +109,9 @@ def cor(mat):
             if i != j:
                 s = spearmanr(mat[i],mat[j])[0]
                 score.append(s)
-                if s < -0.4:
+                if s < -n:
                     neg.append((i,j))
-                elif s > 0.4:
+                elif s > n:
                     pos.append((i,j))
                 else:
                     null.append((i,j))
@@ -211,10 +211,10 @@ if __name__ == "__main__":
     fret = pd.DataFrame(fret_hm_nm, columns=name)
 
     ele = elect(fret, 40)  # choose first n neurons according to std
-    dst = dist_hm(ele.values)
-    pca_d = pca(ele.values, 3)
-    ang = get_angle(pca_d)
-    co,pos,neg,null = cor(ele)
+    # dst = dist_hm(ele.values)
+    # pca_d = pca(ele.values, 3)
+    # ang = get_angle(pca_d)
+    co,pos,neg,null = cor(ele,0.3)
 
     # 4 line charts
     draw()
