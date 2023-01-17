@@ -20,8 +20,8 @@ for i in adj:
             connect.append([i[0], i[1]])
     else:  #gap junction
         if i[3] != 0:
-            lst.append([i[1], i[0], 1 / i[3]])
-            lst.append([i[0], i[1], 1 / i[3]])
+            lst.append([i[1], i[0], 1 / 0.7*i[3]])
+            lst.append([i[0], i[1], 1 / 0.7*i[3]])
 
 
 
@@ -117,6 +117,7 @@ y = y + [neg_count[k] for k in neg_spe]
 n = n + pos_spe
 x = x + [pos_count[k] for k in pos_spe]
 y = y + [0] * len(pos_spe)
+ax1 = plt.subplot(2,1,1)
 plt.scatter(x, y)
 ind_d = []
 for i in range(len(x)):
@@ -144,14 +145,14 @@ for i in name:
                 print(i, j)
 
 comp = list(zip(corr, dist))
-c_pos = [n for n in comp if n[0] > 0.2]
-c_neg = [n for n in comp if n[0] < -0.2]
+c_pos = [n for n in comp if n[0] > 0.4]
+c_neg = [n for n in comp if n[0] < -0.4]
 cor_pos,d_pos = zip(*c_pos)
 cor_neg,d_neg = zip(*c_neg)
+ax2 = plt.subplot(2,1,2)
 plt.scatter(corr,dist)
 plt.scatter(cor_neg,d_neg,c='deepskyblue',label = 'neg cor = {}'.format(stats.spearmanr(cor_neg,d_neg)[0]))
 plt.scatter(cor_pos,d_pos,c="coral",label='pos cor = {}'.format(stats.spearmanr(cor_pos,d_pos)[0]))
 plt.xlabel('correlation')
 plt.ylabel('Synaptic distance')
 plt.legend(loc='upper right')
-plt.show(block=True)
