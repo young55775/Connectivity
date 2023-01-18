@@ -1,7 +1,10 @@
-import networkx as nx
 import matplotlib as mpl
+import networkx as nx
+import pandas as pd
+
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
+
 
 class Neuron:  # define a neuron with post,pre,and ej
     def __init__(self, name: str):
@@ -61,6 +64,7 @@ class NetWork:  # a neuron network created by neuron list
         self.G = []  # total graph
         self.G_chem = []  # without ej
         self.G_ej = []  # ej only
+
     def add_neuron(self, neuron_lst):
         self.neurons += neuron_lst
 
@@ -71,35 +75,40 @@ class NetWork:  # a neuron network created by neuron list
         for neu in self.neurons:
             if neu.post:  # synapse list
                 for syn in neu.post:
-                    self.G.add_edge(syn.pre, syn.post, weight=syn.weight,type='chem')
+                    self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='chem')
                     self.G_chem.add_edge(syn.pre, syn.post, weight=syn.weight)
             if neu.pre:
                 for syn in neu.pre:
-                    self.G.add_edge(syn.pre, syn.post, weight=syn.weight,type='chem')
+                    self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='chem')
                     self.G_chem.add_edge(syn.pre, syn.post, weight=syn.weight)
             if neu.ej:
-                self.G.add_edge(syn.pre, syn.post, weight=syn.weight,type='gap')
-                self.G.add_edge(syn.post, syn.pre, weight=syn.weight,type='gap')
+                self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='gap')
+                self.G.add_edge(syn.post, syn.pre, weight=syn.weight, type='gap')
                 self.G_ej.add_edge(syn.pre, syn.post, weight=syn.weight)
                 self.G_ej.add_edge(syn.post, syn.pre, weight=syn.weight)
 
     def chem_plot(self):
         nx.draw_networkx(self.G_chem, with_labels=False, node_size=20, edge_color='coral',
                          label='chemical junction', width=0.3)
+
     def gap_plot(self):
         nx.draw_networkx(self.G_ej, with_labels=False, node_size=20, edge_color='deepskyblue', label='gap junction',
                          width=0.3)
 
     def total_plot(self):
-        edges, type = zip(*nx.get_edge_attributes(connect.G, 'type').items())
+        edges, type = zip(*nx.get_edge_attributes(self.G, 'type').items())
         c_list = []
         for i in type:
             if i == 'chem':
                 c_list.append('coral')
             else:
                 c_list.append('deepskyblue')
-        nx.draw_networkx(self.G, with_labels=False,edge_color = c_list, node_size=20, label='network',
+        nx.draw_networkx(self.G, with_labels=False, edge_color=c_list, node_size=20, label='network',
                          width=0.3)
+
+    def reset_gap(self): # reset the weight of gap junction
+        pass
+
     def copy(self):
         pass
 
@@ -113,9 +122,8 @@ class NetWork:  # a neuron network created by neuron list
         pass
 
 
-if __name__ == '__main__':
-    import pandas as pd
-    info = pd.read_csv('connectome_all.csv')
+def csv2net(path):  # -> NetWork
+    info = pd.read_csv(path)
     neu = info['Neuron 1'].to_list() + info['Neuron 2'].to_list()
     neu = list(set(neu))
     neuron_list = {}
@@ -136,3 +144,8 @@ if __name__ == '__main__':
     connect = NetWork()
     connect.add_neuron(neuron_list.values())
     connect.construct()
+    return connect
+
+
+if __name__ == '__main__':
+    network = csv2net(r'D:\annotation\Connectivity\connectome_all.csv')
