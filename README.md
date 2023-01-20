@@ -4,7 +4,7 @@ Analyze C. elegans neuron activity
 based on networkx 3.0
 ___
 # Connectome.py
-## 1 Class Neuron(*name:str | cat:str | trans:str | co_trans:str*)
+## 1 Class Neuron(*name:str | transmitter_weight = 1 | cat:str | transmitter:str | co_transmitter:str*)
 ### 1.1 Attribute
 - **name:str**| Name of the neuron  
 - **cat:str** | Category of 'sensory','interneuron','motorneuron'  
