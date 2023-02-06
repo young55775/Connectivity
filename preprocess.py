@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import seaborn as sns
 from scipy.stats import spearmanr
+
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -98,7 +99,7 @@ def de_trend(mat):
     return mat, new
 
 
-def cor(mat,n):
+def cor(mat, n):
     score = []
     pos = []
     neg = []
@@ -107,15 +108,15 @@ def cor(mat,n):
     for i in name:
         for j in name:
             if i != j:
-                s = spearmanr(mat[i],mat[j])[0]
+                s = spearmanr(mat[i], mat[j])[0]
                 score.append(s)
                 if s < -n:
-                    neg.append((i,j))
+                    neg.append((i, j))
                 elif s > n:
-                    pos.append((i,j))
+                    pos.append((i, j))
                 else:
-                    null.append((i,j))
-    return score,pos,neg,null
+                    null.append((i, j))
+    return score, pos, neg, null
 
 
 def de_noise(mat):
@@ -131,7 +132,7 @@ def elect(df, n):  # mat = norm(time x neuron)
     ind = list(df.var().sort_values()[-n:].index)
     mat = pd.DataFrame()
     for i in ind:
-        mat = pd.concat([mat,df[i]],axis=1)
+        mat = pd.concat([mat, df[i]], axis=1)
     return mat
 
 
@@ -189,6 +190,14 @@ def fft_filter(mat):
         new.append(line)
     return abs(np.asarray(new))
 
+def correlation(cor_mat):
+    lst = []
+    for i in cor_mat:
+        lst.extend(i)
+    return dict(Counter(lst))
+
+
+
 
 if __name__ == "__main__":
     # working commands
@@ -211,10 +220,10 @@ if __name__ == "__main__":
     fret = pd.DataFrame(fret_hm_nm, columns=name)
 
     ele = elect(fret, 40)  # choose first n neurons according to std
-    # dst = dist_hm(ele.values)
-    # pca_d = pca(ele.values, 3)
-    # ang = get_angle(pca_d)
-    co,pos,neg,null = cor(ele,0.3)
+    dst = dist_hm(ele.values)
+    pca_d = pca(ele.values, 3)
+    ang = get_angle(pca_d)
+    co, pos, neg, null = cor(ele, 0.3)
 
     # 4 line charts
     draw()
