@@ -1,7 +1,10 @@
 import sys
 from collections import Counter
+
 import matplotlib as mpl
-mpl.use('TkAgg')
+
+mpl.use('Agg')
+import pylab
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -9,10 +12,9 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 
 
-
-
 class Neuron:  # define a neuron with post,pre,and ej
-    def __init__(self, name: str, transmitter_weight=1, cat='unknown', transmitter='unknown', co_transmitter=None):
+    def __init__(self, name: str, transmitter_weight=1, cat='unknown', amp=1, transmitter='unknown',
+                 co_transmitter=None):
         self.name = name
         self.transmitter_weight = transmitter_weight
         self.post = []  # post_synapse
@@ -23,6 +25,8 @@ class Neuron:  # define a neuron with post,pre,and ej
         self.co_transmitter = co_transmitter
         self.input = []
         self.output = []
+        self.amplify = amp
+        self.loss = 0
 
     def add_post(self, n1, n2, weight):
         self.post.append(Synapse(weight, n1, n2, self.transmitter, self.transmitter_weight, self.co_transmitter))
@@ -40,12 +44,19 @@ class Neuron:  # define a neuron with post,pre,and ej
         output = []
         for i in self.input:
             i = list(i)
-            i = [0]*30 + i[:-30] # consider time frame
+            i = [0] * 20 + i[:-20]  # consider time frame
             output.append(i)
         output = np.mean(np.array(output), axis=0)
         m = output.copy()
-        ind = np.abs(m)>0.5
-        self.output = output*ind
+        m = np.convolve(np.array([0.2]*5),m,'same')
+        ind = np.abs(m) > 0.5
+        self.output = output * ind * self.amplify * (1 - self.loss)
+
+    def set_loss(self, loss):
+        self.loss = loss
+
+    def set_amp(self, amp):
+        self.amplify = amp
 
 
 class Synapse:  # synapse description including receptors and transmitters
@@ -71,7 +82,7 @@ class NetWork:  # a neuron network created by neuron list
         self.neurons = neuron_lst
         self.weight_dict = {}
         self.G = nx.MultiDiGraph()
-        self.G_ej = nx.DiGraph()
+        self.G_ej = nx.MultiDiGraph()
         self.G_chem = nx.MultiDiGraph()
 
     def add_neuron(self, neuron_lst):
@@ -86,27 +97,27 @@ class NetWork:  # a neuron network created by neuron list
                 for syn in neu.post:
                     # if syn.pre in self.neurons.keys() and syn.post in self.neurons.keys():
                     self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='chem', transmitter=syn.transmitter,
-                                    co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                    co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
                     self.G_chem.add_edge(syn.pre, syn.post, weight=syn.weight, transmitter=syn.transmitter,
-                                         co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                         co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
             if neu.pre:
                 for syn in neu.pre:
                     # if syn.pre in self.neurons.keys() and syn.post in self.neurons.keys():
                     self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='chem', transmitter=syn.transmitter,
-                                    co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                    co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
                     self.G_chem.add_edge(syn.pre, syn.post, weight=syn.weight, transmitter=syn.transmitter,
-                                         co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                         co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
             if neu.ej:
                 for syn in neu.ej:
-                # if syn.pre in self.neurons.keys() and syn.post in self.neurons.keys():
+                    # if syn.pre in self.neurons.keys() and syn.post in self.neurons.keys():
                     self.G.add_edge(syn.pre, syn.post, weight=syn.weight, type='gap', transmitter=syn.transmitter,
-                                    co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                    co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
                     self.G.add_edge(syn.post, syn.pre, weight=syn.weight, type='gap', transmitter=syn.transmitter,
-                                    co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                    co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
                     self.G_ej.add_edge(syn.pre, syn.post, weight=syn.weight, transmitter=syn.transmitter,
-                                       co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                       co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
                     self.G_ej.add_edge(syn.post, syn.pre, weight=syn.weight, transmitter=syn.transmitter,
-                                       co_transmitter=syn.co_transmitter,transmitter_weight = syn.transmitter_weight)
+                                       co_transmitter=syn.co_transmitter, transmitter_weight=syn.transmitter_weight)
 
     def chem_plot(self):
         nx.draw_networkx(self.G_chem, with_labels=False, node_size=20, edge_color='coral',
@@ -127,33 +138,30 @@ class NetWork:  # a neuron network created by neuron list
         nx.draw_networkx(self.G, with_labels=with_labels, edge_color=c_list, node_size=node_size, label='network',
                          width=width)
 
-    def reset_gap(self):  # reset the weight of gap junction
-        pass
+    def reset(self):
+        for k,v in self.neurons.items():
+            v.input = []
+            v.output = []
+            self.neurons[k] = v
 
     def copy(self):
         return NetWork(neuron_lst=self.neurons.copy())
 
-    def ablation(self, name):  # ablation a neuron and return a new network
-        neuron_lst = self.neurons.copy()
-        if name in neuron_lst.keys():
-            del neuron_lst[name]
-        else:
-            print('Neuron {} not in the network'.format(name), file=sys.stderr)
-        net = NetWork(neuron_lst)
-        net.construct()
-        return net
+    def ablation(self, name:str):  # ablation a neuron and return a new network
+        if name in self.neurons.keys():
+            self.neurons[name].set_loss = 0.9
+
 
     def ablation(self, name_lst: list):
         new = self.copy()
         for i in name_lst:
             if i in new.neurons.keys():
-                new = new.ablation(i)
+                new.ablation(i)
         return new
 
-    def activate(self,neuron,signal=np.sin(np.linspace(0, 5, 800))):
+    def activate(self, neuron, signal=np.sin(np.linspace(0, 5, 800))):
         self.neurons[neuron].input_signal(signal)
         self.neurons[neuron].generate_output()
-
 
     def sub_network(self, name_lst):  # subtract subnet from it
         neuron = {}
@@ -164,7 +172,7 @@ class NetWork:  # a neuron network created by neuron list
         return net
 
 
-def csv2net(path, class_path, trans_path, transmitter_dict={}):  # -> NetWork
+def csv2net(path, class_path, trans_path, transmitter_dict={}, type_dict={}):  # -> NetWork
     info = pd.read_csv(path)
     neu = info['Neuron 1'].to_list() + info['Neuron 2'].to_list()
     cat = pd.read_csv(class_path)
@@ -179,9 +187,9 @@ def csv2net(path, class_path, trans_path, transmitter_dict={}):  # -> NetWork
     neuron_list = {}
     for i in neu:
         if i in tran.keys() and i in cat.keys() and i in co_tran.keys():
-            neuron_list[i] = Neuron(i, transmitter_dict[tran[i]], cat[i], tran[i], co_tran[i])
+            neuron_list[i] = Neuron(i, transmitter_dict[tran[i]], cat[i], type_dict[cat[i]], tran[i], co_tran[i])
         else:
-            neuron_list[i] = Neuron(i, transmitter_dict['unknown'], cat[i], 'unknown', 'unknown')
+            neuron_list[i] = Neuron(i, transmitter_dict['unknown'], cat[i], type_dict[cat[i]], 'unknown', 'unknown')
     for m in info.iterrows():
         n1 = m[1]['Neuron 1']
         n2 = m[1]['Neuron 2']
@@ -199,7 +207,7 @@ def csv2net(path, class_path, trans_path, transmitter_dict={}):  # -> NetWork
     return connect
 
 
-def forward(neuron_list,network):
+def forward(neuron_list, network):
     '''
     :param neuron_list:list, graph:nx.MultiDiGraph():
     process the signal in every target neuron and give the output list
@@ -209,14 +217,14 @@ def forward(neuron_list,network):
     output = []
     for i in neuron_list:
         try:
-            rec = dict(Counter(list(zip(*list(network.G.edges(i))))[1])) # find the numbers of edges and the post cells
+            rec = dict(Counter(list(zip(*list(network.G.edges(i))))[1]))  # find the numbers of edges and the post cells
             if len(dic[i].output) != 0:
                 signal = dic[i].output
-                for k,v in rec.items():
+                for k, v in rec.items():
                     for n in range(v):
-                        dt = network.G.edges[i,k,n]
-                        w = (1/dt['weight'])*dt['transmitter_weight']
-                        dic[k].input_signal(w*signal) # neuron i receive the signal from a synapse
+                        dt = network.G.edges[i, k, n]
+                        w = (1 / dt['weight']) * dt['transmitter_weight']
+                        dic[k].input_signal(w * signal)  # neuron i receive the signal from a synapse
                     dic[k].generate_output()
                     output.append(k)
         except:
@@ -224,55 +232,89 @@ def forward(neuron_list,network):
     network.neurons = dic
     return output
 
-def norm(ar):
-    return (ar - np.min(ar))/(np.max(ar)-np.min(ar))
 
-def wgn(sig,rate):
+def norm(ar):
+    return (ar - np.min(ar)) / (np.max(ar) - np.min(ar))
+
+
+def wgn(sig, rate):
     noise = np.random.randn(len(sig))
     noise *= rate
     noise -= np.mean(noise)
-    return sig+noise
+    return sig + noise
+
+def simple_paths_with_node_exclusion(G, source, target, exclude_nodes):
+    edge_list = []
+    edge_list.extend(G.edges_iter(exclude_nodes))
+    G.remove_nodes_from(exclude_nodes)
+    value = nx.all_simple_paths(G, source, target)
+    G.add_nodes_from(edge_list)
+    return value
 
 
+print(list(simple_paths_with_node_exclusion(G, 0, 12, [13])))
 if __name__ == '__main__':
-    signal_asjl = 3*wgn(np.sin(5*np.linspace(0, 40, 800))+0.65*np.cos(np.linspace(12, 89, 800))*np.random.randn(800),0.1)
-    signal_asjr = 3*wgn(np.sin(5*np.linspace(0, 40, 800)) + 0.65 * np.cos(np.linspace(12, 89, 800)) * np.random.randn(800), 0.1)
-    signal_asel = 2*wgn(np.sin(3*np.linspace(0, 40, 800)),0.1)
-    signal_aser = 2*wgn(np.cos(3*np.linspace(0, 40, 800)),0.1)
-    signal_aval = 1.7*wgn(np.sin(np.linspace(0, 40, 800))+0.03*np.cos(0.005*np.linspace(12, 89, 800))*np.random.randn(800),0.1)
-    signal_avar = 1.7*wgn(np.cos(np.linspace(0, 40, 800)) + 0.03 * np.sin(0.005*np.linspace(12, 89, 800)) * np.random.randn(800), 0.1)
-    transmitter_dict = {'unknown': 0.5, 'GABA': -1.3, 'Glu': 0.7,
-                        'Ach': 1, 'ACh': 1, 'Unknown (orphan)': 0.5,
-                        'unknown MA (cat-1)': 0.5, 'DA': 0.7, 'ACh (minor)': 0.1,
-                        'Octopamine': 1, '': 1}
-    network = csv2net('connectome_all.csv', 'celltype.csv', 'transmitter.csv', transmitter_dict)
-    network.activate('AVAL',signal_aval)
+    # generate signals
+    signal_asjl = 3* wgn(
+        np.sin(2 * np.linspace(0, 40, 800)) + 0.05 * np.cos(np.linspace(12, 89, 800)) * np.random.randn(800), 0.16)
+    signal_asjr = 3 * wgn(
+        np.sin(2 * np.linspace(0, 40, 800)) + 0.05 * np.cos(np.linspace(12, 89, 800)) * np.random.randn(800), 0.16)
+    signal_asel = 1 * wgn(np.sin(3 * np.linspace(0, 40, 800)), 0.16)
+    signal_aser = 1 * wgn(np.cos(3 * np.linspace(0, 40, 800)), 0.16)
+    signal_aval = 2 * wgn(
+        np.sin(1*np.linspace(0, 40, 800)) + 0.01*np.cos(0.015 * np.linspace(12, 89, 800)), 0.16)
+    signal_avar = 2 * wgn(
+        np.cos(1*np.linspace(0, 40, 800)) + 0.01*np.sin(0.015 * np.linspace(12, 89, 800)), 0.16)
+    type_dict = {'sensory': 1.3, 'interneuron': 1.1, 'motorneuron': 0.8, 'muscle': 0.1}
+    transmitter_dict = {'unknown': 0.5, 'GABA': -1.4, 'Glu': 1,
+                        'Ach': 1.1, 'ACh': 1.1, 'Unknown (orphan)': 0.5,
+                        'unknown MA (cat-1)': 0.5, 'DA': 0.7, 'ACh (minor)': 0.3,
+                        'Octopamine': 1.3, '': 1}
+    network = csv2net('connectome_all.csv', 'celltype.csv', 'transmitter.csv', transmitter_dict, type_dict)
+    network.activate('AVAL', signal_aval)
     network.activate('AVAR', signal_avar)
     network.activate('ASEL', signal_asel)
     network.activate('ASER', signal_aser)
     network.activate('ASJL', signal_asjl)
     network.activate('ASJR', signal_asjr)
-    ax = []
-    ns = ['AVAL','AVAR','ASEL','ASER','ASJL','ASJR']
-    for i in range(3):
-        ns = forward(ns,network)
+    # network = network.ablation(['RIBL','RIBR'])
+    ns = ['ASEL', 'ASER', 'AVAL','AVAR','ASJL', 'ASJR']
+    ax = ns
+    for i in range(7):
+        m = {}
+        ax = list(set(ax))
+        for j in ax:
+            val = network.neurons[j].output
+            if np.max(val) - np.min(val) >= 0.00001:
+                m[j] = network.neurons[j].output
+            # m['INPUT'] = norm(wgn(np.sin(np.linspace(0, 40, 800)),0.05))
+        sns.clustermap(pd.DataFrame(m).T, col_cluster=False, cmap='jet')
+        plt.savefig("{}.jpg".format(str(i)))
+        plt.close()
+        ns = forward(ns, network)
         ns = list(set(ns))
         ax.extend(ns)
-    m = {}
-    ax = list(set(ax))
-    for j in ax:
-        m[j] = norm(network.neurons[j].output)
-        # m['INPUT'] = norm(wgn(np.sin(np.linspace(0, 40, 800)),0.05))
-    # a = sns.clustermap(pd.DataFrame(m).T, col_cluster=False, cmap='jet')
-    plt.subplot(2,1,1)
-    plt.plot(signal_asel,label = 'ASEL')
-    plt.plot(signal_aser,label = 'ASER')
-    plt.plot(signal_aval,label = 'AVAL')
-    plt.plot(signal_avar,label = 'AVAR')
-    plt.plot(signal_asjl,label = 'ASJL')
-    plt.plot(signal_asjr,label = 'ASJR')
-    plt.title('INPUT SIGNAL')
-    plt.legend()
-    plt.subplot(2,1,2)
-    plt.plot(pd.DataFrame(m))
-    plt.title('OUTPUT SIGNAL')
+        print(i)
+
+        m = {}
+        ax = list(set(ax))
+        for j in ax:
+            val = network.neurons[j].output
+            if np.max(val) - np.min(val) >= 0.00001:
+                m[j] = network.neurons[j].output
+            # m['INPUT'] = norm(wgn(np.sin(np.linspace(0, 40, 800)),0.05))
+        sns.clustermap(pd.DataFrame(m).T, col_cluster=False, cmap='jet')
+        plt.savefig("final.jpg".format(str(i)))
+
+    # plt.subplot(2, 1, 1)
+    # plt.plot(signal_asel, label='ASEL')
+    # plt.plot(signal_aser, label='ASER')
+    # plt.plot(signal_aval, label='AVAL')
+    # plt.plot(signal_avar, label='AVAR')
+    # plt.plot(signal_asjl, label='ASJL')
+    # plt.plot(signal_asjr, label='ASJR')
+    # plt.title('INPUT SIGNAL')
+    # plt.legend()
+    # plt.subplot(2, 1, 2)
+    # plt.plot(pd.DataFrame(m))
+    # plt.title('OUTPUT SIGNAL')
