@@ -171,7 +171,19 @@ class NetWork:  # a neuron network created by neuron list
         net.construct()
         return net
 
-
+    def count_path(self,cutoff,path_lst):
+        path = []
+        graph = self.G_chem
+        for i in path_lst:
+            try:
+                path.extend(rm_dup(nx.all_simple_paths(graph,i[0],i[1],cutoff)))
+            except:
+                continue
+        rm_dup(path)
+        count = []
+        for i in path:
+            count.extend(i)
+        return dict(Counter(count))
 def csv2net(path, class_path, trans_path, transmitter_dict={}, type_dict={}):  # -> NetWork
     info = pd.read_csv(path)
     neu = info['Neuron 1'].to_list() + info['Neuron 2'].to_list()
@@ -243,16 +255,16 @@ def wgn(sig, rate):
     noise -= np.mean(noise)
     return sig + noise
 
-def simple_paths_with_node_exclusion(G, source, target, exclude_nodes):
-    edge_list = []
-    edge_list.extend(G.edges_iter(exclude_nodes))
-    G.remove_nodes_from(exclude_nodes)
-    value = nx.all_simple_paths(G, source, target)
-    G.add_nodes_from(edge_list)
-    return value
+
+def rm_dup(list):
+    nlst = []
+    for i in list:
+        if i not in nlst:
+            nlst.append(i)
+    return nlst
 
 
-print(list(simple_paths_with_node_exclusion(G, 0, 12, [13])))
+
 if __name__ == '__main__':
     # generate signals
     signal_asjl = 3* wgn(

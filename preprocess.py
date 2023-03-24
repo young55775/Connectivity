@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import seaborn as sns
 from scipy.stats import spearmanr
-
+from collections import Counter
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
@@ -91,7 +91,6 @@ def de_trend(mat):
         # remove zero point
         x, y = rm_zero(list(time_series), list(data))
         f, err = curve_fit(fun, x, y, p0=[0.003, 0.5, 0.5], maxfev=5000)
-        print(f)
         curve = fun(time_series, f[0], f[1], f[2])
         new.append(curve)
     new = np.asarray(new)
@@ -107,7 +106,7 @@ def cor(mat, n):
     name = list(mat.columns)
     for i in name:
         for j in name:
-            if i != j:
+            if i != j and i.isdigit()==False and j.isdigit()==False:
                 s = spearmanr(mat[i], mat[j])[0]
                 score.append(s)
                 if s < -n:
