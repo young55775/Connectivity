@@ -2,6 +2,9 @@ import preprocess as pr
 import connectome as connect
 import networkx as nx
 import pandas as pd
+import matplotlib as mpl
+mpl.use('TkAgg')
+import matplotlib.pyplot as plt
 
 ch1_p = r"ch1.csv"
 ch2_p = r"ch2.csv"
@@ -31,10 +34,15 @@ network = connect.csv2net('connectome_all.csv', 'celltype.csv', 'transmitter.csv
 Graph = network.G_chem
 path_dict = network.count_path(4,pos)
 
-plt.bar(range(len(path_dict)), list(path_dict.values()), align='center')
-plt.xticks(range(len(path_dict)), list(path_dict.keys()))
-plt.show()
+def plot_dict(dic):
+    plt.bar(range(len(dic)), list(dic.values()), align='center')
+    plt.xticks(range(len(dic)), list(dic.keys()))
+    plt.show()
+
+plot_dict(path_dict)
 
 a = list(path_dict.items())
-a = sorted(a, key = lambda x:x[1], reverse = True)
-dict(a)
+a = sorted(a, key = lambda x:x[1], reverse = True)[:30] #提取前30个神经元
+a = dict(a)
+
+plot_dict(a)
