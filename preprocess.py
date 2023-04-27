@@ -196,47 +196,26 @@ def correlation(cor_mat):
     return dict(Counter(lst))
 
 
+def histplot(data,label):
+    dt = data.flatten()
+    dt = set(dt)
+    dt = [n for n in dt if n != 0]
+    sns.histplot(dt,stat='probability',label=label)
 
 
-if __name__ == "__main__":
-    # working commands
-    ch1_p = r"ch1.csv"
-    ch2_p = r"ch2.csv"
+def main(ch1_p,ch2_p):
     ch1 = pd.read_csv(ch1_p, index_col=0)
     ch2 = pd.read_csv(ch2_p, index_col=0)
     name = ch1.columns
-    ch1 = ch1[120:]
-    ch2 = ch2[120:]
+    # or can manually remove error values
+    # ch1 = ch1[120:]
+    # ch2 = ch2[120:]
     ch1_d = ch1.values
     ch2_d = ch2.values
-    # cor = np.array([0.0000001] * ch1.shape[1])
-    # ch1_d += cor
     fret_hm = ch2_d / ch1_d
     fret_hm = fret_hm.T
     fret_hm_dn = de_noise(fret_hm)
     fret_hm_dt, curve = de_trend(fret_hm_dn)
     fret_hm_nm = norm(fret_hm_dt.T)
     fret = pd.DataFrame(fret_hm_nm, columns=name)
-
-    ele = elect(fret, 40)  # choose first n neurons according to std
-    dst = dist_hm(ele.values)
-    pca_d = pca(ele.values, 3)
-    ang = get_angle(pca_d)
-    co, pos, neg, null = cor(ele, 0.3)
-
-    # 4 line charts
-    draw()
-    # first heatmap
-    a = sns.clustermap(fret.T, col_cluster=False, cmap='jet')
-    # trend heatmap
-    b = sns.clustermap(curve, col_cluster=False, cmap='jet')
-    # cldt = a.data2d # cluster heatmap
-    # distance map
-    plt.imshow(dst, cmap='jet', aspect='auto')
-    plt.colorbar()
-    # pca 3d plot
-    draw_pca(pca_d)
-    # pca angle plot
-    sns.histplot(ang)
-    # spearman plot neuron correlation pairs
-    sns.histplot(co)
+    return fret
