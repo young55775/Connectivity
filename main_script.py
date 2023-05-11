@@ -6,11 +6,13 @@ import matplotlib as mpl
 
 mpl.use('TkAgg')
 import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
 
 ch1_p = r"ch1.csv"
 ch2_p = r"ch2.csv"
-y1 = main(ch1_p, ch2_p)  # generate normalized mat
-sns.clustermap(y1, col_cluster=False)  # draw a signal fig
+y1 = pr.main(ch1_p, ch2_p)  # generate normalized mat
+sns.clustermap(y1.T, col_cluster=False, cmap='jet')  # draw a signal fig
 co_eff = np.corrcoef(y1.T)  # co_eff matrix
 sns.clustermap(co_eff)  # heatmap of co_eff matrix
 pr.histplot(co_eff, label='young')
@@ -35,3 +37,4 @@ plt.show()
 a = list(path_dict.items())
 a = sorted(a, key=lambda x: x[1], reverse=True)
 dict(a)
+

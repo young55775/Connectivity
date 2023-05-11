@@ -12,10 +12,9 @@ from scipy.fftpack import fft, ifft
 
 # normalize
 def norm(arr):
-    ax = np.max(arr, axis=0)
-    m = np.min(arr, axis=0)
-    r = ax - m
-    return (arr - m) / r
+    mean = np.mean(arr,axis=0)
+    std = np.std(arr,axis = 0)
+    return (arr - mean) / std
 
 
 # read_folder
